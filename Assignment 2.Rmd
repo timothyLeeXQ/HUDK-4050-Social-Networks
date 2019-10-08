@@ -155,17 +155,16 @@ Now practice with data from our class. Please create a **person-network** with t
 
 ```{r}
 #Read in data
-raw_data <- read_csv("hudk4050-classes.csv", skip = 2)
+raw_data <- read_csv("hudk4050-classes.csv")
 
 #Select relevant variables
-#Record ID is taken over UNI for anonymisation reasons
-class_DF <- raw_data %>% select(id = '{"ImportId":"QID8_TEXT"}',
-                                class1 = '{"ImportId":"QID1_TEXT"}',
-                                class2 = '{"ImportId":"QID3_TEXT"}',
-                                class3 = '{"ImportId":"QID4_TEXT"}',
-                                class4 = '{"ImportId":"QID5_TEXT"}',
-                                class5 = '{"ImportId":"QID6_TEXT"}',
-                                class6 = '{"ImportId":"QID7_TEXT"}',)
+class_DF <- raw_data %>% select(id = 'First Name',
+                                class1 = 'Class 1',
+                                class2 = 'Class 2',
+                                class3 = 'Class 3',
+                                class4 = 'Class 4',
+                                class5 = 'Class 5',
+                                class6 = 'Class 6',)
 
 person_class_log <- class_DF %>%
                         gather(key = class,
