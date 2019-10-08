@@ -1,3 +1,8 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 # Assignment 2 - Social Network Analysis
 
 ## Part I
@@ -149,13 +154,12 @@ plot(graph_new,layout = layout.fruchterman.reingold,
 Now practice with data from our class. Please create a **person-network** with the data set hudk4050-classes.csv. To create this network you will need to create a person-class matrix using the tidyr functions and then create a person-person matrix using `t()`. You will then need to plot a matrix rather than a data frame using igraph.
 
 ```{r}
-#Read in CSV
-raw_data <- read_csv("hudk4050-classes.csv",
-                     skip = 2)
+#Read in data
+raw_data <- read_csv("hudk4050-classes.csv", skip = 2)
 
 #Select relevant variables
 #Record ID is taken over UNI for anonymisation reasons
-class_DF <- raw_data %>% select(id = '{"ImportId":"_recordId"}',
+class_DF <- raw_data %>% select(id = '{"ImportId":"QID8_TEXT"}',
                                 class1 = '{"ImportId":"QID1_TEXT"}',
                                 class2 = '{"ImportId":"QID3_TEXT"}',
                                 class3 = '{"ImportId":"QID4_TEXT"}',
@@ -175,15 +179,25 @@ person_class_log <- class_DF %>%
 # First need to clean all the course names, Going forward should make people use CRNs instead
 
 #Some people added spaces between department and course name, and others didn't. Replace with no spaces throughout
-person_class_log$course_code <- gsub(pattern = " ", replacement = "", x = person_class_log$course_code)
+person_class_log$course_code <- gsub(pattern = " ",
+                                     replacement = "",
+                                     x = person_class_log$course_code)
 
 # Different people took different approaches to filling in QMSS/GSAS courses. 
 # Some prefixes I found: G, GR, QMSS-G, QMSS G, QMSS GR, QMSS. 
 # Replace with form: GXXXX throughout.
-person_class_log$course_code <- gsub(pattern = "QMSS-", replacement = "", x = person_class_log$course_code)
-person_class_log$course_code <- gsub(pattern = "QMSS", replacement = "G", x = person_class_log$course_code)
-person_class_log$course_code <- gsub(pattern = "GG", replacement = "G", x = person_class_log$course_code)
-person_class_log$course_code <- gsub(pattern = "GR", replacement = "G", x = person_class_log$course_code)
+person_class_log$course_code <- gsub(pattern = "QMSS-",
+                                     replacement = "",
+                                     x = person_class_log$course_code)
+person_class_log$course_code <- gsub(pattern = "QMSS",
+                                     replacement = "G",
+                                     x = person_class_log$course_code)
+person_class_log$course_code <- gsub(pattern = "GG",
+                                     replacement = "G",
+                                     x = person_class_log$course_code)
+person_class_log$course_code <- gsub(pattern = "GR",
+                                     replacement = "G",
+                                     x = person_class_log$course_code)
 
 # I tried, but there's still some problems (E.g. one person who just put in numbers (e.g. 4050, 5026)).
 # I'm getting rid of this guy.
@@ -221,9 +235,16 @@ colnames(person_person_matrix) <- person_class_DF$id
 
 #Change the diagonals to NA to avoid complicating matters
 diag(x = person_person_matrix) <- NA
-person_person_graph_data <- graph_from_adjacency_matrix(person_person_matrix)
+person_person_graph_data <- graph_from_adjacency_matrix(person_person_matrix, mode = "undirected")
 
-plot(person_person_graph_data, layout = layout.fruchterman.reingold)
+plot.igraph(person_person_graph_data,
+     layout = layout.fruchterman.reingold,
+     vertex.size = 10,
+     vertex.label.cex = 0.4 
+     #vertex.label = NA
+     #Even at this small font size, the vertex labels affect readibility.
+     #Would prefer removing them instead using this command, but haven't done so for illustration here.
+     )
 
 ```
 
@@ -231,7 +252,6 @@ Once you have done this, also [look up](http://igraph.org/r/) how to generate th
 
 ```{r}
 #Betweenness Centrality
-
 betweeness_centrality <- betweenness(person_person_graph_data)
 betweeness_centrality[betweeness_centrality == max(betweeness_centrality)]
 
