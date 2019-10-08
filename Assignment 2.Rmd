@@ -5,6 +5,12 @@ Start by installing the "igraph" package. Once you have installed igraph, load t
 
 Now upload the data file "discipline-data.csv" as a data frame called "D1". Each row is a disciplinary action from a teacher to a student so the first line shows that teacher "E" sent student "21" to the principal. It also shows the gender of both the teacher and student and the student's main elective field of study ("major"") and the field that the teacher instructs in ("t.expertise").
 
+```{r}
+library(readr)
+D1 <- read_csv("discipline-data.csv")
+D1
+```
+
 Before you proceed, you will need to change the data type of the student id variable. Since it is a number R will automatically think it is an integer and code it as such (look at the list of variables by clicking on the data frame arrow in the Data pane. Here you will see the letters "int"" next to the stid variable, that stands for integer). However, in this case we are treating the variable as a category, there is no numeric meaning in the variable. So we need to change the format to be a category, what R calls a "factor". We can do this with the following code:
 
 ```{r}
@@ -18,7 +24,7 @@ So let's convert our data into an edge list!
 First we will isolate the variables that are of interest: tid and stid
 
 ```{r}
-library(dplyr)
+library(tidyverse)
 
 D2 <- select(D1, tid, stid)
 ```
@@ -67,34 +73,174 @@ library(igraph)
 
 #First we will make an object that contains the graph information using our two dataframes EDGE and VERTEX. Notice that we have made "directed = TRUE" - our graph is directed since discipline is being given from a teacher to a student.
 
-g <- graph.data.frame(EDGE, directed=TRUE, vertices=VERTEX)
+g <- graph.data.frame(EDGE, directed = TRUE, vertices = VERTEX)
 
 #Now we can plot our graph using the force directed graphing technique - our old friend Fruchertman-Reingold!
 
-plot(g,layout=layout.fruchterman.reingold)
+plot(g,layout = layout.fruchterman.reingold)
 
 #There are many ways to change the attributes of the graph to represent different characteristics of the newtork. For example, we can color the nodes according to gender.
 
-plot(g,layout=layout.fruchterman.reingold, vertex.color=VERTEX$gender)
+#Include colours in the vertex DF
+gender_colours = ifelse(VERTEX$gender == "female", yes = "blue", no = "red")
+VERTEX = cbind(VERTEX, gender_colours)
+
+plot(g,layout = layout.fruchterman.reingold, vertex.color = VERTEX$gender_colours)
 
 #We can change the thickness of the edge according to the number of times a particular teacher has sent a particular student to the principal.
 
-plot(g,layout=layout.fruchterman.reingold, vertex.color=VERTEX$gender, edge.width=EDGE$count)
+plot(g,layout = layout.fruchterman.reingold, vertex.color = VERTEX$gender_colours, edge.width = EDGE$count)
 
-````
+```
 
 ## Part II
 
 In Part II your task is to [look up](http://igraph.org/r/) in the igraph documentation and create a graph that sizes the student vertices in terms of the number of disciplinary actions they have recieved, and the teachers in terms of the number of disciplinary actions they have given out.
 
+```{r}
 
+#Need to count the number of times disciplinary actions were issued and received
+#teacher_disc and student_disc compile the number of disciplinary actions issued/received by each teacher/student
+teacher_disc <- EDGE %>% 
+                  group_by(from) %>% 
+                  summarise(disc = sum(count)) %>%
+                  mutate(id = from) %>%
+                  select(id, disc)
+student_disc <- EDGE %>%
+                  group_by(to) %>% 
+                  summarise(disc = sum(count)) %>%
+                  mutate(id = to) %>%
+                  select(id, disc)
+# Coerce student_disc ID to character because teacher_disc ID is character, while student_disc ID is factor.
+# This prevents an error message from showing when you bind_rows.
+student_disc$id <- as.character(student_disc$id)
+#total_disc combines teacher_disc and student_disc into a single DF to make our graph
+total_disc <- bind_rows(teacher_disc, student_disc) %>% arrange(id)
+
+#Make a new vertex with the total_disc information incorporated. So this can be passed into the vertex.size argument for plotting.
+# Need to arrange by ID, since the total_disc DF is arranged properly, but the VERTEx DF is jumbled - this ensures that
+# each row in total_disc correctly corresponds to the ID in VERTEX.
+# The by argument in left_join() should do this, but I want to be sure x.x
+vertex_new <- VERTEX %>% 
+                arrange(id) %>% 
+                left_join(total_disc, by = "id")
+# Add colours
+gender_colours = ifelse(vertex_new$gender == "female",
+                        yes = "blue", no = "red")
+
+vertex_new = cbind(vertex_new, gender_colours)
+
+
+#Make new graph DF
+graph_new <- graph.data.frame(EDGE,
+                              directed = TRUE,
+                              vertices = vertex_new) 
+
+#Time to plot
+plot(graph_new,layout = layout.fruchterman.reingold,
+     vertices = vertex_new,
+     vertex.color = vertex_new$gender_colours,
+     vertex.size = vertex_new$disc,
+     edge.width = EDGE$count)
+```
 
 ## Part III
 
 Now practice with data from our class. Please create a **person-network** with the data set hudk4050-classes.csv. To create this network you will need to create a person-class matrix using the tidyr functions and then create a person-person matrix using `t()`. You will then need to plot a matrix rather than a data frame using igraph.
 
-Once you have done this, also [look up](http://igraph.org/r/) how to generate the following network metrics: betweeness centrality and dregree. **Who is the most central person in the network?**
+```{r}
+#Read in CSV
+raw_data <- read_csv("hudk4050-classes.csv",
+                     skip = 2)
+
+#Select relevant variables
+#Record ID is taken over UNI for anonymisation reasons
+class_DF <- raw_data %>% select(id = '{"ImportId":"_recordId"}',
+                                class1 = '{"ImportId":"QID1_TEXT"}',
+                                class2 = '{"ImportId":"QID3_TEXT"}',
+                                class3 = '{"ImportId":"QID4_TEXT"}',
+                                class4 = '{"ImportId":"QID5_TEXT"}',
+                                class5 = '{"ImportId":"QID6_TEXT"}',
+                                class6 = '{"ImportId":"QID7_TEXT"}',)
+
+person_class_log <- class_DF %>%
+                        gather(key = class,
+                               value = course_code,
+                               c(class1, class2, class3, class4, class5, class6), -id) %>%
+                        select(id, course_code) %>%
+                        filter(!is.na(course_code)) %>%
+                        arrange(id) %>%
+                        mutate(enrolled = 1)
+
+# First need to clean all the course names, Going forward should make people use CRNs instead
+
+#Some people added spaces between department and course name, and others didn't. Replace with no spaces throughout
+person_class_log$course_code <- gsub(pattern = " ", replacement = "", x = person_class_log$course_code)
+
+# Different people took different approaches to filling in QMSS/GSAS courses. 
+# Some prefixes I found: G, GR, QMSS-G, QMSS G, QMSS GR, QMSS. 
+# Replace with form: GXXXX throughout.
+person_class_log$course_code <- gsub(pattern = "QMSS-", replacement = "", x = person_class_log$course_code)
+person_class_log$course_code <- gsub(pattern = "QMSS", replacement = "G", x = person_class_log$course_code)
+person_class_log$course_code <- gsub(pattern = "GG", replacement = "G", x = person_class_log$course_code)
+person_class_log$course_code <- gsub(pattern = "GR", replacement = "G", x = person_class_log$course_code)
+
+# I tried, but there's still some problems (E.g. one person who just put in numbers (e.g. 4050, 5026)).
+# I'm getting rid of this guy.
+
+#Also getting rid of HUDK4050 entries - since everyone takes HUDK 4050, everyone is connected to each other and
+#the graph looks like a blob of people.
+
+person_class_log <- person_class_log %>%
+                        filter(id != "R_2Tpj0MpsyzEpQsy") %>%
+                        filter(course_code != "HUDK4050")
+
+#Now we can make the person-class matrix.
+person_class_DF <- person_class_log %>%
+                          spread(key = course_code,
+                                 value = enrolled,
+                                 fill = 0)
+```
+
+```{r}
+#Creating the person-person matrix
+
+#Convert person_class_DF to a matrix
+person_class_DF_2 <- person_class_DF %>% select(-id)
+person_class_matrix <- as.matrix(person_class_DF_2)
+
+#Transpose the person_class_matrix
+class_person_matrix <- t(person_class_DF_2)
+
+#Multiply person_class matrix by its transposition to get person_person matrix
+person_person_matrix <- person_class_matrix %*% class_person_matrix
+
+#Rename rows and colums of our person_person matrix for clarity
+rownames(person_person_matrix) <- person_class_DF$id
+colnames(person_person_matrix) <- person_class_DF$id
+
+#Change the diagonals to NA to avoid complicating matters
+diag(x = person_person_matrix) <- NA
+person_person_graph_data <- graph_from_adjacency_matrix(person_person_matrix)
+
+plot(person_person_graph_data, layout = layout.fruchterman.reingold)
+
+```
+
+Once you have done this, also [look up](http://igraph.org/r/) how to generate the following network metrics: betweeness centrality and degree. **Who is the most central person in the network?**
+
+```{r}
+#Betweenness Centrality
+
+betweeness_centrality <- betweenness(person_person_graph_data)
+betweeness_centrality[betweeness_centrality == max(betweeness_centrality)]
+
+# Degree
+degrees <- degree(person_person_graph_data)
+degrees[degrees == max(degrees)]
+```
+
 
 ### To Submit Your Assignment
 
-Please submit your assignment by first "knitting" your RMarkdown document into an html file and then comit, push and pull request both the RMarkdown file and the html file.
+Please submit your assignment by first "knitting" your RMarkdown document into an html file and then commit, push and pull request both the RMarkdown file and the html file.
