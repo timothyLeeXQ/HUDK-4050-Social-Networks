@@ -1,7 +1,7 @@
 ---
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 # Assignment 2 - Social Network Analysis
 
@@ -200,13 +200,10 @@ person_class_log$course_code <- gsub(pattern = "GR",
                                      x = person_class_log$course_code)
 
 # I tried, but there's still some problems (E.g. one person who just put in numbers (e.g. 4050, 5026)).
-# I'm getting rid of this guy.
 
-#Also getting rid of HUDK4050 entries - since everyone takes HUDK 4050, everyone is connected to each other and
-#the graph looks like a blob of people.
+#Also getting rid of HUDK4050 entries - since everyone in the data takes HUDK 4050.
 
 person_class_log <- person_class_log %>%
-                        filter(id != "R_2Tpj0MpsyzEpQsy") %>%
                         filter(course_code != "HUDK4050")
 
 #Now we can make the person-class matrix.
