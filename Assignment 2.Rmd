@@ -201,6 +201,9 @@ person_class_log$course_code <- gsub(pattern = "GR",
 
 # I tried, but there's still some problems (E.g. one person who just put in numbers (e.g. 4050, 5026)).
 
+person_class_log <- person_class_log %>%
+                        filter(id != "ZIMO")
+
 #Also getting rid of HUDK4050 entries - since everyone in the data takes HUDK 4050.
 
 person_class_log <- person_class_log %>%
