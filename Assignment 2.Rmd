@@ -155,10 +155,12 @@ Now practice with data from our class. Please create a **person-network** with t
 
 ```{r}
 #Read in data
-raw_data <- read_csv("hudk4050-classes.csv")
+raw_data <- read_csv("hudk4050-classes.csv") %>% unite(col = "id", 1:2, sep = "_")
+
+
 
 #Select relevant variables
-class_DF <- raw_data %>% select(id = 'First Name',
+class_DF <- raw_data %>% select(id,
                                 class1 = 'Class 1',
                                 class2 = 'Class 2',
                                 class3 = 'Class 3',
@@ -264,3 +266,11 @@ degrees[degrees == max(degrees)]
 ### To Submit Your Assignment
 
 Please submit your assignment by first "knitting" your RMarkdown document into an html file and then commit, push and pull request both the RMarkdown file and the html file.
+
+**For Assignment 3 **
+```{r}
+save(person_person_graph_data,
+     person_class_DF,
+     file = "assn_2.RData")
+```
+
